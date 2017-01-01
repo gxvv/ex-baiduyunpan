@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         EX-baiduyunpan
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/gxvv/ex-baiduyunpan/
 // @version      0.1.0
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan]
 // @author       gxvv
 // @license      MIT
+// @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @date         01/01/2016
-// @modified     01/01/2016
+// @modified     01/02/2016
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
 // @match        *://pan.baidu.com/share/link?*
@@ -35,6 +36,84 @@
             $dialog.remove();
         }).appendTo(document.body);
     }
+    define('ex-yunpan:manifestInject', function(require, module, exports){
+        GM_addStyle('.module-toolbar .list-tools .g-dropdown-button:not(.tools-more) .g-button{border-radius: 0;}');
+        var exbtn = {
+            "name": "ex-baiduyunpan",
+            "group": "com.baidu.pan",
+            "version": "1.0",
+            "type": "1",
+            "description": "The button plugin.",
+            "supportManage": false,
+            "filesType": "*",
+            "contextMenu": {
+                "type": "file",
+                "title": "EX-\u4e0b\u8f7d",
+                "index": 2
+            },
+            "buttons": [{
+                "position": "listTools",
+                "index": 3,
+                "disabled": "none",
+                "title": "EX-\u4e0b\u8f7d",
+                "icon": "icon-download",
+                "buttonStyle": "normal",
+                "type": "dropdown",
+                "menu": [{
+                    "title": "拷贝链接",
+                    "click": function(){
+                        var msg = require('system-core:system/baseService/message/message.js');
+                        var context = require('system-core:context/context.js');
+                        var ctx = new context();
+                        var filesList = ctx.list.getSelected();
+                        ctx.ui.tip({autoClose: false,hasClose: false,
+                                    mode: 'loading',
+                                    msg: '开始获取链接...'
+                                   });
+                        msg.trigger("plugin:" + e.pluginId, {
+                            run: 'start',
+                            filesList: filesList,
+                            getDlink: true,
+                            callback: function(){
+                                console.log('getdlink callback');
+                                console.log(arguments);
+                                ctx.ui.tip({autoClose: true,
+                                            mode: 'success',
+                                            msg: '获取成功'
+                                           });
+                            }
+                        });
+                    }
+                }, {
+                    "title": "显示链接",
+                    'click': function (){
+                        var msg = require('system-core:system/baseService/message/message.js');
+                        var context = require('system-core:context/context.js');
+                        var ctx = new context();
+                        var filesList = ctx.list.getSelected();
+                        var t = function (){
+                            console.log(arguments);
+                        };
+                        require.async("file-widget-1:download/service/dlinkService.js", function(dServ) {
+                            var n;
+                            switch (n) {
+                                case "mbox":
+                                    break;
+                                case "share":
+                                    break;
+                                default:
+                                    dServ.getDlinkPan(dServ.getFsidListData(filesList), "batch", t, undefined, undefined, "POST");
+                            }
+                        });
+                    }
+                }]
+            }],
+            "preload": true,
+            "entranceFile": "file-widget-1:download\/start.js",
+            "depsFiles": []
+        };
+        unsafeWindow.manifest.push(exbtn);
+    });
     define('ex-yunpan:pluginInit.js', function(require, module, exports){
         var ctx = require('system-core:context/context.js').instanceForSystem;
         var $ = require("base:widget/libs/jquerypacket.js");
@@ -120,6 +199,14 @@
             pluginLoadWatcher['downloadDirectService.js'].resolve();
         });
     });
+    try{
+        require('ex-yunpan:manifestInject');
+    }catch(ex){
+        ctx.ui.tip({
+            mode: "caution",
+            msg: '按钮初始化失败，若脚本失效，请检查更新或提交issue'
+        });
+    }
     document.addEventListener("DOMContentLoaded", function(event) {
         try{
             require('ex-yunpan:pluginInit.js');
