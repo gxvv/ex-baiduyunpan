@@ -23,7 +23,26 @@
 
     function showError(msg) {
         GM_addStyle('#errorDialog{position: fixed;top: 76.5px; bottom: auto; left: 423px; right: auto;background: #fff;border: 1px solid #ced1d9;border-radius: 4px;box-shadow: 0 0 3px #ced1d9;color: black;word-break: break-all;display: block;width: 520px;padding: 10px 20px;z-index: 9999;}#errorDialog h3{border-bottom: 1px solid #ced1d9;font-size: 1.5em;font-weight: bold;}');
-        var $ = unsafeWindow.jQuery;
+        var $;
+        try{
+            $ = require('base:widget/libs/jquerypacket.js');
+        } catch (e) {
+            var div = document.createElement('div');
+            $ = function(str){
+                div.innerHTML = str;
+                div.onclick = function(){
+                    this.remove();
+                };
+                return $;
+            };
+            $.on = function(){
+                return {
+                    appendTo: function(){
+                        document.body.appendChild(div);
+                    }
+                };
+            };
+        }
         var $dialog = $('<div id="errorDialog">' +
             '<h3>EX-baiduyunpan:程序异常</h3>' +
             '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息提交issue</p>' +
@@ -46,8 +65,25 @@
             ".*://pan.baidu.com/share/link?.*": 'share',
             ".*://eyun.baidu.com/s/.*": 'enterprise'
         };
-        var containers = {
-
+        var PAGE_CONFIG = {
+            pan: {
+                jq: 'base:widget/libs/jquerypacket.js',
+                prefix: 'file-widget-1:',
+                style: function(){
+                }
+            },
+            share: {
+                jq: 'base:widget/libs/jquerypacket.js',
+                prefix: 'file-widget-1:',
+                style: function(){
+                }
+            },
+            enterprise: {
+                jq: 'base:widget/libs/jquerypacket.js',
+                prefix: 'file-widget-1:',
+                style: function(){
+                }
+            }
         };
         for (var match in matchs) {
             if (new RegExp(match).test(url) === true) {
