@@ -46,7 +46,7 @@
         }
         var $dialog = $('<div id="errorDialog">' +
             '<h3>EX-baiduyunpan:程序异常</h3>' +
-            '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息提交issue</p>' +
+            '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>' +
             '<p>Exception: ' + msg + '</p>' +
             '<p>Script Ver: ' + GM_info.script.version + '</p>' +
             '<p>TemperMonkey Ver: ' + GM_info.version + '</p>' +
@@ -302,7 +302,7 @@
                 setTimeout(function() {
                     ctx.ui.tip({
                         mode: 'caution',
-                        msg: '检测到正在调用云管家，若脚本失效，请检查更新或提交issue',
+                        msg: '检测到正在调用云管家，若脚本失效，请检查更新或<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>',
                         hasClose: true,
                         autoClose: false
                     });
