@@ -6,8 +6,8 @@
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
-// @date         01/01/2016
-// @modified     01/02/2016
+// @date         01/01/2017
+// @modified     01/08/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
 // @match        *://pan.baidu.com/share/link?*
@@ -15,6 +15,7 @@
 // @run-at       document-end
 // @grant        unsafeWindow
 // @grant        GM_addStyle
+// @grant        GM_setClipboard
 // @grant        GM_info
 // ==/UserScript==
 
@@ -50,7 +51,6 @@
             '<p>Script Ver: ' + GM_info.script.version + '</p>' +
             '<p>TemperMonkey Ver: ' + GM_info.version + '</p>' +
             '<p>UA: ' + navigator.userAgent + '</p>' +
-            '<p>URL: ' + location.href + '</p>' +
             '</div><hr><a class="close" href="javascript:;">关闭</a></div>');
         $dialog.on('click', '.close', function(event) {
             $dialog.remove();
@@ -68,22 +68,24 @@
         var PAGE_CONFIG = {
             pan: {
                 prefix: 'file-widget-1:',
-                containers: ['.module-toolbar .list-tools', '.module-list-view .list-view .undefined'],
+                containers: ['.module-toolbar .list-tools>.g-button:has(.icon-download)', '.module-list-view .list-view .undefined>.g-button:has(.icon-download)'],
                 style: function() {
-                GM_addStyle('.module-toolbar .list-tools .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}')
+                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}');
                 }
             },
             share: {
                 prefix: 'file-widget-1:',
-                containers: ['.list-header .list-header-operatearea .list-header-operate .button-box', '.module-share-top-bar .button-box'],
+                containers: ['.list-header .list-header-operatearea .list-header-operate .button-box>.g-button:has(.icon-download)', '.module-share-top-bar .button-box>.g-button:has(.icon-download)'],
                 style: function() {
                     GM_addStyle('.module-toolbar .list-tools .g-dropdown-button:not(.tools-more) .g-button{border-radius: 0;}.module-list .list-view-header{z-index: 2;}.module-list .module-list-view .operate .ex-yunpan-dropdown-button .icon:before{display: none;}.module-share-header .slide-show-right{width: auto;}');
                 }
             },
             enterprise: {
                 prefix: 'business-function:',
-                containers: [],
-                style: function() {}
+                containers: ['.button-box-container>.g-button:has(:contains("下载"))'],
+                style: function() {
+                    GM_addStyle('.ex-yunpan-dropdown-button .icon-download{background-image: url(/box-static/business-function/infos/icons_z.png?t=1476004014313);}.ex-yunpan-dropdown-button .g-button:hover .icon-download{background-position: 0px -34px;}');
+                }
             }
         };
         for (var match in matchs) {
@@ -109,57 +111,135 @@
                     start.start(ctx);
                 }
             }, {
-                title: '显示链接',
+                title: '复制链接',
                 'click': function() {
+                    var yunData;
                     var selectedList = ctx.list.getSelected();
-                    var foldersList = selectedList.filter(function(e){ return e.isdir === 1;});
-                    var filesList = selectedList.filter(function(e){ return e.isdir === 0;});
+                    var foldersList = selectedList.filter(function(e) {
+                        return e.isdir === 1;
+                    });
+                    var filesList = selectedList.filter(function(e) {
+                        return e.isdir === 0;
+                    });
                     require.async(prefix + 'download/service/dlinkService.js', function(dServ) {
+                        var promises = [];
+                        var _ = dServ._doError;
+                        dServ._doError = function(errorCode) {
+                            ctx.ui.tip({
+                                mode: 'caution',
+                                msg: '需要输入验证码，请勿选择多个文件',
+                                hasClose: true,
+                                autoClose: false
+                            });
+                            _.call(dServ, errorCode);
+                        };
                         switch (ctx.pageInfo.currentProduct) {
                             case 'pan':
-                                if(filesList.length > 0) foldersList.unshift(filesList);
-                                var promises = foldersList.map(function(e){
-                                    var def = $.Deferred();
-                                    dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir===1?'batch':'nolimit', function(result) {
-                                        console.log(result);
-                                        def.resolve(result);
-                                    }, undefined, undefined, 'POST');
-                                    console.log(def.state());
-                                    return def;
-                                });
-                                $.when.apply($, promises).then(function(){
-                                    consnole.log(arguments);
-                                }).fail(function(){
-                                    console.log(arguments);
+                                if (filesList.length > 0) foldersList.unshift(filesList);
+                                promises = foldersList.map(function(e) {
+                                    return new Promise(function(resolve, reject) {
+                                        var timer = setTimeout(function() {
+                                            reject('timeout');
+                                        }, 3000);
+                                        dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir === 1 ? 'batch' : 'nolimit', function(result) {
+                                            resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                                            clearTimeout(timer);
+                                            timer = null;
+                                        }, undefined, undefined, 'POST');
+                                    });
                                 });
                                 break;
                             case 'share':
-                                var yunData = require('disk-share:widget/system/data/yunData.js').get();
-                                var folderList = filesList;
-                                console.log(filesList);
-                                dServ.getDlinkShare({
-                                    share_id: yunData.shareid,
-                                    share_uk: yunData.uk,
-                                    sign: yunData.sign,
-                                    timestamp: yunData.timestamp,
-                                    list: filesList,
-                                    // type: 'nolimit'
-                                    isForBatch: true
-                                }, function (result) {
-                                  console.log(result);
+                                yunData = require('disk-share:widget/system/data/yunData.js').get();
+                                if (filesList.length > 0) foldersList.unshift(filesList);
+                                promises = foldersList.map(function(e) {
+                                    return new Promise(function(resolve, reject) {
+                                        var timer = setTimeout(function() {
+                                            reject('timeout');
+                                        }, 3000);
+                                        dServ.getDlinkShare({
+                                            share_id: yunData.shareid,
+                                            share_uk: yunData.uk,
+                                            sign: yunData.sign,
+                                            timestamp: yunData.timestamp,
+                                            list: e,
+                                            type: e.isdir === 1 ? 'batch' : 'nolimit'
+                                        }, function(result) {
+                                            resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                                            clearTimeout(timer);
+                                            timer = null;
+                                        });
+                                    });
+                                });
+                                break;
+                            case 'enterprise':
+                                yunData = require('page-common:widget/data/yunData.js').get();
+                                if (filesList.length > 0)[].push.apply(foldersList, filesList);
+                                promises = foldersList.map(function(e) {
+                                    return new Promise(function(resolve, reject) {
+                                        var timer = setTimeout(function() {
+                                            reject('timeout');
+                                        }, 3000);
+                                        var config = {
+                                            share_id: yunData.shareid,
+                                            share_uk: yunData.uk,
+                                            sign: yunData.sign,
+                                            timestamp: yunData.timestamp,
+                                            list: [e],
+                                            type: e.isdir === 1 ? 'batch' : 'nolimit'
+                                        };
+                                        dServ.getDlinkShare(config, function(result) {
+                                            resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                                            clearTimeout(timer);
+                                            timer = null;
+                                        });
+                                    });
                                 });
                                 break;
                             default:
-                                break;
+                                ctx.ui.tip({
+                                    mode: 'caution',
+                                    msg: '复制链接当前页面不可用',
+                                    hasClose: true,
+                                    autoClose: false
+                                });
+                                return;
                         }
+                        Promise.all(promises).then(function(result) {
+                            var dlinks = [];
+                            result.forEach(function(e) {
+                                if (e.isdir === 1) {
+                                    e.dlink = e.dlink + "&zipname=" + encodeURIComponent('【文件夹】' + e.server_filename + '.zip');
+                                    dlinks.push(e.dlink);
+                                } else {
+                                    [].push.apply(dlinks, (e.dlink || e.list || []).map(function(e) {
+                                        return e.dlink;
+                                    }));
+                                }
+                            });
+                            GM_setClipboard(dlinks.join('\n'));
+                            ctx.ui.tip({
+                                mode: 'success',
+                                msg: '复制成功'
+                            });
+                        }).catch(function(e) {
+                            if (e === 'timeout') {
+                                ctx.ui.tip({
+                                    mode: 'caution',
+                                    msg: '请求超时',
+                                    hasClose: true,
+                                    autoClose: false
+                                });
+                            } else {
+                                showError(e);
+                            }
+                        });
                     });
                 }
             }],
             icon: 'icon-download'
         };
-        var selector = pageInfo.containers.map(function(e) {
-            return e + '>.g-button:has(.icon-download)';
-        }).join();
+        var selector = pageInfo.containers.join();
         $(selector).each(function(i, e) {
             var exDlBtn = ctx.ui.button(exDlBtnConfig);
             $(e).after(exDlBtn.dom.addClass('ex-yunpan-dropdown-button'));
