@@ -7,10 +7,12 @@
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @date         01/01/2017
-// @modified     01/08/2017
+// @modified     01/10/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
+// @match        *://yun.baidu.com/s/*
 // @match        *://pan.baidu.com/share/link?*
+// @match        *://yun.baidu.com/share/link?*
 // @match        *://eyun.baidu.com/s/*
 // @run-at       document-end
 // @grant        unsafeWindow
@@ -46,7 +48,7 @@
         }
         var $dialog = $('<div id="errorDialog">' +
             '<h3>EX-baiduyunpan:程序异常</h3>' +
-            '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>' +
+            '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息提交issue</p>' +
             '<p>Exception: ' + msg + '</p>' +
             '<p>Script Ver: ' + GM_info.script.version + '</p>' +
             '<p>TemperMonkey Ver: ' + GM_info.version + '</p>' +
@@ -62,7 +64,9 @@
         var matchs = {
             '.*://pan.baidu.com/disk/home.*': 'pan',
             '.*://pan.baidu.com/s/.*': 'share',
+            '.*://yun.baidu.com/s/.*': 'share',
             '.*://pan.baidu.com/share/link?.*': 'share',
+            '.*://yun.baidu.com/share/link?.*': 'share',
             '.*://eyun.baidu.com/s/.*': 'enterprise'
         };
         var PAGE_CONFIG = {
@@ -127,7 +131,7 @@
                         dServ._doError = function(errorCode) {
                             ctx.ui.tip({
                                 mode: 'caution',
-                                msg: '需要输入验证码，请勿选择多个文件',
+                                msg: '需要输入验证码，请直接下载',
                                 hasClose: true,
                                 autoClose: false
                             });
@@ -139,7 +143,7 @@
                                 promises = foldersList.map(function(e) {
                                     return new Promise(function(resolve, reject) {
                                         var timer = setTimeout(function() {
-                                            reject('timeout');
+                                            dServ.dialog === null ? reject('timeout') : resolve($.extend({}, e.isdir === 1 ? e : {}));
                                         }, 3000);
                                         dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir === 1 ? 'batch' : 'nolimit', function(result) {
                                             resolve($.extend({}, e.isdir === 1 ? e : {}, result));
@@ -155,7 +159,7 @@
                                 promises = foldersList.map(function(e) {
                                     return new Promise(function(resolve, reject) {
                                         var timer = setTimeout(function() {
-                                            reject('timeout');
+                                            dServ.dialog === null ? reject('timeout') : resolve($.extend({}, e.isdir === 1 ? e : {}));
                                         }, 3000);
                                         dServ.getDlinkShare({
                                             share_id: yunData.shareid,
@@ -178,7 +182,7 @@
                                 promises = foldersList.map(function(e) {
                                     return new Promise(function(resolve, reject) {
                                         var timer = setTimeout(function() {
-                                            reject('timeout');
+                                            dServ.dialog === null ? reject('timeout') : resolve($.extend({}, e.isdir === 1 ? e : {}));
                                         }, 3000);
                                         var config = {
                                             share_id: yunData.shareid,
@@ -209,14 +213,18 @@
                             var dlinks = [];
                             result.forEach(function(e) {
                                 if (e.isdir === 1) {
-                                    e.dlink = e.dlink + "&zipname=" + encodeURIComponent('【文件夹】' + e.server_filename + '.zip');
-                                    dlinks.push(e.dlink);
+                                    var dlink = e.dlink + "&zipname=" + encodeURIComponent('【文件夹】' + e.server_filename + '.zip');
+                                    dlinks.push(e.dlink && dlink);
                                 } else {
                                     [].push.apply(dlinks, (e.dlink || e.list || []).map(function(e) {
                                         return e.dlink;
                                     }));
                                 }
                             });
+                            dlinks = dlinks.filter(function(e) {
+                                return e !== undefined;
+                            });
+                            if (dlinks.length === 0) return;
                             GM_setClipboard(dlinks.join('\n'));
                             ctx.ui.tip({
                                 mode: 'success',
@@ -247,20 +255,67 @@
         });
         pageInfo.style();
     });
-    define('ex-yunpan:pluginLoadWatcher', function(require, exports, module) {
+    define('ex-yunpan:pluginInit.js', function(require, module, exports) {
         var ctx = require('system-core:context/context.js').instanceForSystem;
         var $ = require('base:widget/libs/jquerypacket.js');
-        var pluginLoadWatcher = {
-            'downloadManager.js': $.Deferred(),
-            'guanjiaConnector.js': $.Deferred(),
-            'downloadDirectService.js': $.Deferred()
-        };
-        $(unsafeWindow).on('load', function() {
-            Object.values(pluginLoadWatcher).forEach(function(p, index) {
-                if (p.state() === 'pending') p.reject(index);
+        var pageInfo = require('ex-yunpan:pageInfo');
+        var prefix = pageInfo.prefix;
+        var dmPromise = new Promise(function(resolve, reject) {
+            $(unsafeWindow).on('load', function() {
+                reject('downloadManager.js');
+            });
+            require.async(prefix + 'download/service/downloadManager.js', function(dm) {
+                dm.MODE_PRE_INSTALL = dm.MODE_PRE_DOWNLOAD;
+                resolve();
             });
         });
-        $.when.apply($, Object.values(pluginLoadWatcher)).then(function(result) {
+        var gjcPromise = new Promise(function(resolve, reject) {
+            $(unsafeWindow).on('load', function() {
+                reject('guanjiaConnector.js');
+            });
+            require.async(prefix + 'download/service/guanjiaConnector.js', function(gjC) {
+                gjC.init = function() {
+                    setTimeout(function() {
+                        ctx.ui.tip({
+                            mode: 'caution',
+                            msg: '检测到正在调用云管家，若脚本失效，请检查更新或提交issue',
+                            hasClose: true,
+                            autoClose: false
+                        });
+                    }, 5000);
+                };
+                resolve();
+            });
+        });
+        var ddsPromise = new Promise(function(resolve, reject) {
+            $(unsafeWindow).on('load', function() {
+                reject('downloadDirectService.js');
+            });
+            require.async(prefix + 'download/service/downloadDirectService.js', function(dDS) {
+                var $preDlFrame = null;
+                var _ = dDS.straightforwardDownload;
+                if (typeof _ !== 'function') return;
+                dDS.straightforwardDownload = function() {
+                    ctx.ui.tip({
+                        mode: 'loading',
+                        msg: '正在开始下载...'
+                    });
+                    if ($preDlFrame === null) {
+                        setTimeout(function() {
+                            var $frame = $('#pcsdownloadiframe');
+                            if ($frame.length === 0) return;
+                            $frame.ready(function(event) {
+                                ctx.ui.hideTip();
+                            });
+                            $preDlFrame = $frame;
+                        }, 1000);
+                    }
+                    _.apply(dDS, arguments);
+                };
+                resolve();
+            });
+        });
+        Promise.all([dmPromise, gjcPromise, ddsPromise]).then(function() {
             try {
                 require('ex-yunpan:downloadBtnInit');
                 ctx.ui.tip({
@@ -275,64 +330,8 @@
                     hasClose: true
                 });
             }
-        }).fail(function() {
-            var failIndex = [].slice.call(arguments);
-            var keys = Object.keys(pluginLoadWatcher);
-            var msg = failIndex.map(function(e) {
-                return keys[e];
-            }).join() + '加载失败';
-            showError(msg);
-        });
-        module.exports = pluginLoadWatcher;
-    });
-    define('ex-yunpan:pluginInit.js', function(require, module, exports) {
-        var ctx = require('system-core:context/context.js').instanceForSystem;
-        var $ = require('base:widget/libs/jquerypacket.js');
-        var pageInfo = require('ex-yunpan:pageInfo');
-        var prefix = pageInfo.prefix;
-        var pluginLoadWatcher = require('ex-yunpan:pluginLoadWatcher');
-
-        require.async(prefix + 'download/service/downloadManager.js', function(dm) {
-            dm.MODE_PRE_INSTALL = dm.MODE_PRE_DOWNLOAD;
-            pluginLoadWatcher['downloadManager.js'].resolve();
-        });
-
-        require.async(prefix + 'download/service/guanjiaConnector.js', function(gjC) {
-            gjC.init = function() {
-                setTimeout(function() {
-                    ctx.ui.tip({
-                        mode: 'caution',
-                        msg: '检测到正在调用云管家，若脚本失效，请检查更新或<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>',
-                        hasClose: true,
-                        autoClose: false
-                    });
-                }, 5000);
-            };
-            pluginLoadWatcher['guanjiaConnector.js'].resolve();
-        });
-
-        require.async(prefix + 'download/service/downloadDirectService.js', function(dDS) {
-            var $preDlFrame = null;
-            var _ = dDS.straightforwardDownload;
-            if (typeof _ !== 'function') return;
-            dDS.straightforwardDownload = function() {
-                ctx.ui.tip({
-                    mode: 'loading',
-                    msg: '正在开始下载...'
-                });
-                if ($preDlFrame === null) {
-                    setTimeout(function() {
-                        var $frame = $('#pcsdownloadiframe');
-                        if ($frame.length === 0) return;
-                        $frame.ready(function(event) {
-                            ctx.ui.hideTip();
-                        });
-                        $preDlFrame = $frame;
-                    }, 1000);
-                }
-                _.apply(dDS, arguments);
-            };
-            pluginLoadWatcher['downloadDirectService.js'].resolve();
+        }).catch(function(msg) {
+            showError(msg + '加载失败');
         });
     });
     try {
