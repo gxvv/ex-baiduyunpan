@@ -81,7 +81,7 @@
                 prefix: 'file-widget-1:',
                 containers: ['.list-header .list-header-operatearea .list-header-operate .button-box>.g-button:has(.icon-download)', '.module-share-top-bar .button-box>.g-button:has(.icon-download)'],
                 style: function() {
-                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button:not(.tools-more) .g-button{border-radius: 0;}.module-list .list-view-header{z-index: 2;}.module-list .module-list-view .operate .ex-yunpan-dropdown-button .icon:before{display: none;}.module-share-header .slide-show-right{width: auto;}');
+                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button:not(.tools-more) .g-button{border-radius: 0;}.module-list .list-view-header{z-index: 2;}.module-list .module-list-view .operate .ex-yunpan-dropdown-button .icon:before{display: none;}.module-share-header .slide-show-right{width: auto;}.ex-yunpan-dropdown-button.g-dropdown-button.button-open .menu{z-index:31;}');
                 }
             },
             enterprise: {
@@ -104,6 +104,22 @@
         var $ = require('base:widget/libs/jquerypacket.js');
         var pageInfo = require('ex-yunpan:pageInfo');
         var prefix = pageInfo.prefix;
+        var dServ = null;
+        require.async(prefix + 'download/service/dlinkService.js', function(dlinkService) {
+            var _doError = dlinkService._doError;
+            dlinkService._doError = function(errorCode) {
+                if (errorCode === -20) {
+                    ctx.ui.tip({
+                        mode: 'caution',
+                        msg: '需要输入验证码，请使用普通下载',
+                        hasClose: true,
+                        autoClose: false
+                    });
+                }
+                _doError.call(dServ, errorCode);
+            };
+            dServ = dlinkService;
+        });
         var exDlBtnConfig = {
             type: 'dropdown',
             title: 'EX-下载',
@@ -125,123 +141,105 @@
                     var filesList = selectedList.filter(function(e) {
                         return e.isdir === 0;
                     });
-                    require.async(prefix + 'download/service/dlinkService.js', function(dServ) {
-                        var promises = [];
-                        var _ = dServ._doError;
-                        dServ._doError = function(errorCode) {
+                    var promises = [];
+                    switch (ctx.pageInfo.currentProduct) {
+                        case 'pan':
+                            if (filesList.length > 0) foldersList.unshift(filesList);
+                            promises = foldersList.map(function(e) {
+                                return new Promise(function(resolve, reject) {
+                                    dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir === 1 ? 'batch' : 'nolimit', function(result) {
+                                        resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                                        clearTimeout(timer);
+                                        timer = null;
+                                    }, undefined, undefined, 'POST');
+                                });
+                            });
+                            break;
+                        case 'share':
+                            yunData = require('disk-share:widget/system/data/yunData.js').get();
+                            if (filesList.length > 0) foldersList.unshift(filesList);
+                            promises = foldersList.map(function(e) {
+                                return new Promise(function(resolve, reject) {
+                                    dServ.getDlinkShare({
+                                        share_id: yunData.shareid,
+                                        share_uk: yunData.uk,
+                                        sign: yunData.sign,
+                                        timestamp: yunData.timestamp,
+                                        list: e,
+                                        type: e.isdir === 1 ? 'batch' : 'nolimit'
+                                    }, function(result) {
+                                        resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                                        clearTimeout(timer);
+                                        timer = null;
+                                    });
+                                });
+                            });
+                            break;
+                        case 'enterprise':
+                            yunData = require('page-common:widget/data/yunData.js').get();
+                            if (filesList.length > 0)[].push.apply(foldersList, filesList);
+                            promises = foldersList.map(function(e) {
+                                return new Promise(function(resolve, reject) {
+                                    var config = {
+                                        share_id: yunData.shareid,
+                                        share_uk: yunData.uk,
+                                        sign: yunData.sign,
+                                        timestamp: yunData.timestamp,
+                                        list: [e],
+                                        type: e.isdir === 1 ? 'batch' : 'nolimit'
+                                    };
+                                    dServ.getDlinkShare(config, function(result) {
+                                        resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                                        clearTimeout(timer);
+                                        timer = null;
+                                    });
+                                });
+                            });
+                            break;
+                        default:
                             ctx.ui.tip({
                                 mode: 'caution',
-                                msg: '需要输入验证码，请直接下载',
+                                msg: '复制链接当前页面不可用',
                                 hasClose: true,
                                 autoClose: false
                             });
-                            _.call(dServ, errorCode);
-                        };
-                        switch (ctx.pageInfo.currentProduct) {
-                            case 'pan':
-                                if (filesList.length > 0) foldersList.unshift(filesList);
-                                promises = foldersList.map(function(e) {
-                                    return new Promise(function(resolve, reject) {
-                                        var timer = setTimeout(function() {
-                                            dServ.dialog === null ? reject('timeout') : resolve($.extend({}, e.isdir === 1 ? e : {}));
-                                        }, 3000);
-                                        dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir === 1 ? 'batch' : 'nolimit', function(result) {
-                                            resolve($.extend({}, e.isdir === 1 ? e : {}, result));
-                                            clearTimeout(timer);
-                                            timer = null;
-                                        }, undefined, undefined, 'POST');
-                                    });
-                                });
-                                break;
-                            case 'share':
-                                yunData = require('disk-share:widget/system/data/yunData.js').get();
-                                if (filesList.length > 0) foldersList.unshift(filesList);
-                                promises = foldersList.map(function(e) {
-                                    return new Promise(function(resolve, reject) {
-                                        var timer = setTimeout(function() {
-                                            dServ.dialog === null ? reject('timeout') : resolve($.extend({}, e.isdir === 1 ? e : {}));
-                                        }, 3000);
-                                        dServ.getDlinkShare({
-                                            share_id: yunData.shareid,
-                                            share_uk: yunData.uk,
-                                            sign: yunData.sign,
-                                            timestamp: yunData.timestamp,
-                                            list: e,
-                                            type: e.isdir === 1 ? 'batch' : 'nolimit'
-                                        }, function(result) {
-                                            resolve($.extend({}, e.isdir === 1 ? e : {}, result));
-                                            clearTimeout(timer);
-                                            timer = null;
-                                        });
-                                    });
-                                });
-                                break;
-                            case 'enterprise':
-                                yunData = require('page-common:widget/data/yunData.js').get();
-                                if (filesList.length > 0)[].push.apply(foldersList, filesList);
-                                promises = foldersList.map(function(e) {
-                                    return new Promise(function(resolve, reject) {
-                                        var timer = setTimeout(function() {
-                                            dServ.dialog === null ? reject('timeout') : resolve($.extend({}, e.isdir === 1 ? e : {}));
-                                        }, 3000);
-                                        var config = {
-                                            share_id: yunData.shareid,
-                                            share_uk: yunData.uk,
-                                            sign: yunData.sign,
-                                            timestamp: yunData.timestamp,
-                                            list: [e],
-                                            type: e.isdir === 1 ? 'batch' : 'nolimit'
-                                        };
-                                        dServ.getDlinkShare(config, function(result) {
-                                            resolve($.extend({}, e.isdir === 1 ? e : {}, result));
-                                            clearTimeout(timer);
-                                            timer = null;
-                                        });
-                                    });
-                                });
-                                break;
-                            default:
-                                ctx.ui.tip({
-                                    mode: 'caution',
-                                    msg: '复制链接当前页面不可用',
-                                    hasClose: true,
-                                    autoClose: false
-                                });
-                                return;
-                        }
-                        Promise.all(promises).then(function(result) {
-                            var dlinks = [];
-                            result.forEach(function(e) {
-                                if (e.isdir === 1) {
-                                    var dlink = e.dlink + "&zipname=" + encodeURIComponent('【文件夹】' + e.server_filename + '.zip');
-                                    dlinks.push(e.dlink && dlink);
-                                } else {
-                                    [].push.apply(dlinks, (e.dlink || e.list || []).map(function(e) {
-                                        return e.dlink;
-                                    }));
-                                }
-                            });
-                            dlinks = dlinks.filter(function(e) {
-                                return e !== undefined;
-                            });
-                            if (dlinks.length === 0) return;
-                            GM_setClipboard(dlinks.join('\n'));
-                            ctx.ui.tip({
-                                mode: 'success',
-                                msg: '复制成功'
-                            });
-                        }).catch(function(e) {
-                            if (e === 'timeout') {
-                                ctx.ui.tip({
-                                    mode: 'caution',
-                                    msg: '请求超时',
-                                    hasClose: true,
-                                    autoClose: false
-                                });
+                            return;
+                    }
+                    Promise.all(promises).then(function(result) {
+                        var dlinks = [];
+                        result.forEach(function(e) {
+                            if (e.isdir === 1) {
+                                var dlink = e.dlink + "&zipname=" + encodeURIComponent('【文件夹】' + e.server_filename + '.zip');
+                                dlinks.push(e.dlink && dlink);
                             } else {
-                                showError(e);
+                                [].push.apply(dlinks, (e.dlink || e.list || []).map(function(e) {
+                                    return e.dlink;
+                                }));
                             }
                         });
+                        dlinks = dlinks.filter(function(e) {
+                            return e !== undefined;
+                        });
+                        if (dlinks.length === 0) return ctx.ui.tip({
+                            mode: 'caution',
+                            msg: '复制失败，未获取到链接'
+                        });
+                        GM_setClipboard(dlinks.join('\n'));
+                        ctx.ui.tip({
+                            mode: 'success',
+                            msg: '复制成功'
+                        });
+                    }).catch(function(e) {
+                        if (e === 'timeout') {
+                            ctx.ui.tip({
+                                mode: 'caution',
+                                msg: '请求超时',
+                                hasClose: true,
+                                autoClose: false
+                            });
+                        } else {
+                            showError(e);
+                        }
                     });
                 }
             }],
