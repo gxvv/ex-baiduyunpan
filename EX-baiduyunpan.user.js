@@ -9,6 +9,7 @@
 // @date         01/01/2017
 // @modified     01/10/2017
 // @match        *://pan.baidu.com/disk/home*
+// @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
 // @match        *://yun.baidu.com/s/*
 // @match        *://pan.baidu.com/share/link?*
@@ -63,6 +64,7 @@
         var currentPage = 'pan';
         var matchs = {
             '.*://pan.baidu.com/disk/home.*': 'pan',
+            '.*://yun.baidu.com/disk/home.*': 'pan',
             '.*://pan.baidu.com/s/.*': 'share',
             '.*://yun.baidu.com/s/.*': 'share',
             '.*://pan.baidu.com/share/link?.*': 'share',
@@ -106,18 +108,6 @@
         var prefix = pageInfo.prefix;
         var dServ = null;
         require.async(prefix + 'download/service/dlinkService.js', function(dlinkService) {
-            var _doError = dlinkService._doError;
-            dlinkService._doError = function(errorCode) {
-                if (errorCode === -20) {
-                    ctx.ui.tip({
-                        mode: 'caution',
-                        msg: '需要输入验证码，请使用普通下载',
-                        hasClose: true,
-                        autoClose: false
-                    });
-                }
-                _doError.call(dServ, errorCode);
-            };
             dServ = dlinkService;
         });
         var exDlBtnConfig = {
@@ -133,81 +123,79 @@
             }, {
                 title: '复制链接',
                 'click': function() {
-                    var yunData;
+
                     var selectedList = ctx.list.getSelected();
+                    if (selectedList.length === 0) return ctx.ui.tip({
+                        mode: 'caution',
+                        msg: '您还没有选择下载的文件'
+                    });
+                    ctx.ui.tip({
+                        mode: 'loading',
+                        msg: '开始请求链接...'
+                    });
                     var foldersList = selectedList.filter(function(e) {
                         return e.isdir === 1;
                     });
                     var filesList = selectedList.filter(function(e) {
                         return e.isdir === 0;
                     });
-                    var promises = [];
-                    switch (ctx.pageInfo.currentProduct) {
-                        case 'pan':
-                            if (filesList.length > 0) foldersList.unshift(filesList);
-                            promises = foldersList.map(function(e) {
-                                return new Promise(function(resolve, reject) {
-                                    dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir === 1 ? 'batch' : 'nolimit', function(result) {
-                                        resolve($.extend({}, e.isdir === 1 ? e : {}, result));
-                                        clearTimeout(timer);
-                                        timer = null;
-                                    }, undefined, undefined, 'POST');
-                                });
-                            });
-                            break;
-                        case 'share':
-                            yunData = require('disk-share:widget/system/data/yunData.js').get();
-                            if (filesList.length > 0) foldersList.unshift(filesList);
-                            promises = foldersList.map(function(e) {
-                                return new Promise(function(resolve, reject) {
-                                    dServ.getDlinkShare({
-                                        share_id: yunData.shareid,
-                                        share_uk: yunData.uk,
-                                        sign: yunData.sign,
-                                        timestamp: yunData.timestamp,
-                                        list: e,
-                                        type: e.isdir === 1 ? 'batch' : 'nolimit'
-                                    }, function(result) {
-                                        resolve($.extend({}, e.isdir === 1 ? e : {}, result));
-                                        clearTimeout(timer);
-                                        timer = null;
-                                    });
-                                });
-                            });
-                            break;
-                        case 'enterprise':
-                            yunData = require('page-common:widget/data/yunData.js').get();
-                            if (filesList.length > 0)[].push.apply(foldersList, filesList);
-                            promises = foldersList.map(function(e) {
-                                return new Promise(function(resolve, reject) {
-                                    var config = {
-                                        share_id: yunData.shareid,
-                                        share_uk: yunData.uk,
-                                        sign: yunData.sign,
-                                        timestamp: yunData.timestamp,
-                                        list: [e],
-                                        type: e.isdir === 1 ? 'batch' : 'nolimit'
-                                    };
-                                    dServ.getDlinkShare(config, function(result) {
-                                        resolve($.extend({}, e.isdir === 1 ? e : {}, result));
-                                        clearTimeout(timer);
-                                        timer = null;
-                                    });
-                                });
-                            });
-                            break;
-                        default:
-                            ctx.ui.tip({
-                                mode: 'caution',
-                                msg: '复制链接当前页面不可用',
-                                hasClose: true,
-                                autoClose: false
-                            });
-                            return;
+                    var currentProduct = ctx.pageInfo.currentProduct;
+                    if (!~['pan', 'share', 'enterprise'].indexOf(currentProduct)) {
+                        return ctx.ui.tip({
+                            mode: 'caution',
+                            msg: '复制链接当前页面不可用',
+                            hasClose: true,
+                            autoClose: false
+                        });
                     }
+                    if (filesList.length > 0 && currentProduct !== 'enterprise') {
+                        foldersList.unshift(filesList);
+                    } else {
+                        [].push.apply(foldersList, filesList);
+                    }
+                    var requestMethod;
+                    if (currentProduct === 'pan') {
+                        requestMethod = function(e, cb) {
+                            dServ.getDlinkPan(dServ.getFsidListData(e), e.isdir === 1 ? 'batch' : 'nolimit', cb, undefined, undefined, 'POST');
+                        };
+                    } else {
+                        var yunData = require((currentProduct === 'share' ? 'disk-share:widget/system' : 'page-common:widget') + '/data/yunData.js').get();
+                        requestMethod = function(e, cb) {
+                            dServ.getDlinkShare({
+                                share_id: yunData.shareid,
+                                share_uk: yunData.uk,
+                                sign: yunData.sign,
+                                timestamp: yunData.timestamp,
+                                list: currentProduct === 'share' ? e : [e],
+                                type: e.isdir === 1 ? 'batch' : 'nolimit'
+                            }, cb);
+                        };
+                    }
+                    var promises = foldersList.map(function(e) {
+                        return new Promise(function(resolve, reject) {
+                            var timer = setTimeout(function() {
+                                resolve($.extend({}, e));
+                            }, 3000);
+                            requestMethod(e, function(result) {
+                                resolve($.extend({}, e.isdir === 1 ? e : {}, result));
+                            });
+                        });
+                    });
                     Promise.all(promises).then(function(result) {
                         var dlinks = [];
-                        result.forEach(function(e) {
+                        var needToRetry = result.filter(function(e) {
+                            return e.errno !== 0;
+                        });
+                        if (needToRetry.length > 0) {
+                            dServ.dialog && dServ.dialog.destory();
+                            ctx.ui.tip({
+                                mode: 'caution',
+                                msg: needToRetry.length + '个文件请求链接失败'
+                            });
+                        }
+                        result.filter(function(e) {
+                            return e.errno === 0;
+                        }).forEach(function(e) {
                             if (e.isdir === 1) {
                                 var dlink = e.dlink + "&zipname=" + encodeURIComponent('【文件夹】' + e.server_filename + '.zip');
                                 dlinks.push(e.dlink && dlink);
@@ -217,29 +205,17 @@
                                 }));
                             }
                         });
-                        dlinks = dlinks.filter(function(e) {
-                            return e !== undefined;
-                        });
                         if (dlinks.length === 0) return ctx.ui.tip({
                             mode: 'caution',
-                            msg: '复制失败，未获取到链接'
+                            msg: '复制失败：未获取到链接'
                         });
                         GM_setClipboard(dlinks.join('\n'));
                         ctx.ui.tip({
                             mode: 'success',
-                            msg: '复制成功'
+                            msg: '复制成功' + dlinks.length + '个文件'
                         });
                     }).catch(function(e) {
-                        if (e === 'timeout') {
-                            ctx.ui.tip({
-                                mode: 'caution',
-                                msg: '请求超时',
-                                hasClose: true,
-                                autoClose: false
-                            });
-                        } else {
-                            showError(e);
-                        }
+                        showError(e);
                     });
                 }
             }],
