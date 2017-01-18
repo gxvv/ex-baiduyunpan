@@ -7,7 +7,7 @@
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @date         01/01/2017
-// @modified     01/18/2017
+// @modified     01/10/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -76,7 +76,7 @@
                 prefix: 'file-widget-1:',
                 containers: ['.module-toolbar .list-tools>.g-button:has(.icon-download)', '.module-list-view .list-view .undefined>.g-button:has(.icon-download)'],
                 style: function() {
-                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}');
+                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}.module-list .module-list-view .operate .ex-yunpan-dropdown-button{display:none;}');
                 }
             },
             share: {
@@ -211,7 +211,6 @@
                             mode: 'caution',
                             msg: '复制失败：未获取到链接'
                         });
-
                         var clipboard = new Clipboard('.btn');
                         clipboard.on('success', function(e) {
                             ctx.ui.tip({
