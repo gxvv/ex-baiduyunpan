@@ -7,7 +7,7 @@
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @date         01/01/2017
-// @modified     01/10/2017
+// @modified     01/18/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -18,8 +18,8 @@
 // @run-at       document-end
 // @grant        unsafeWindow
 // @grant        GM_addStyle
-// @grant        GM_setClipboard
 // @grant        GM_info
+// @require      https://cdn.bootcss.com/clipboard.js/1.5.16/clipboard.min.js
 // ==/UserScript==
 
 (function(require, define) {
@@ -123,7 +123,6 @@
             }, {
                 title: '复制链接',
                 'click': function() {
-
                     var selectedList = ctx.list.getSelected();
                     if (selectedList.length === 0) return ctx.ui.tip({
                         mode: 'caution',
@@ -182,12 +181,15 @@
                         });
                     });
                     Promise.all(promises).then(function(result) {
+                        ctx.ui.hideTip();
                         var dlinks = [];
                         var needToRetry = result.filter(function(e) {
                             return e.errno !== 0;
                         });
                         if (needToRetry.length > 0) {
-                            dServ.dialog && dServ.dialog.destory();
+                            try {
+                                dServ.dialog.hide();
+                            } catch (ex) {}
                             ctx.ui.tip({
                                 mode: 'caution',
                                 msg: needToRetry.length + '个文件请求链接失败'
@@ -209,11 +211,36 @@
                             mode: 'caution',
                             msg: '复制失败：未获取到链接'
                         });
-                        GM_setClipboard(dlinks.join('\n'));
-                        ctx.ui.tip({
-                            mode: 'success',
-                            msg: '复制成功' + dlinks.length + '个文件'
+
+                        var clipboard = new Clipboard('.btn');
+                        clipboard.on('success', function(e) {
+                            ctx.ui.tip({
+                                mode: 'success',
+                                msg: '复制成功' + dlinks.length + '个文件'
+                            });
+                            e.clearSelection();
+                            dialog.hide();
+                            clipboard.destroy();
                         });
+                        clipboard.on('error', function(e) {
+                            ctx.ui.tip({
+                                mode: 'caution',
+                                msg: '复制失败'
+                            });
+                        });
+                        var text = '<textarea id="bar" rows="' + (dlinks.length + 1) + '" style="width:100%;white-space: nowrap;">' + dlinks.join('\n') + '</textarea>';
+                        var dialog = ctx.ui.confirm({
+                            title: '复制链接',
+                            body: text,
+                            sureText: '复制',
+                            onClose: function() {
+                                clipboard && clipboard.destory && clipboard.destroy();
+                            }
+                        });
+                        dialog.buttonIns[0].dom.attr({
+                            'data-clipboard-action': 'copy',
+                            'data-clipboard-target': '#bar'
+                        }).addClass('btn').off();
                     }).catch(function(e) {
                         showError(e);
                     });
