@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         EX-baiduyunpan
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.1.0
+// @version      0.1.1
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan]
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
+// @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     01/10/2017
+// @modified     01/18/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
