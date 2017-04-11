@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.1.2
+// @version      0.1.3
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan]
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     01/18/2017
+// @modified     04/11/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -23,7 +23,7 @@
 // @require      https://cdn.bootcss.com/clipboard.js/1.5.16/clipboard.min.js
 // ==/UserScript==
 
-(function(require, define) {
+(function(require, define, Promise) {
     'use strict';
 
     function showError(msg) {
@@ -340,4 +340,4 @@
     } catch (ex) {
         showError(ex);
     }
-})(unsafeWindow.require, unsafeWindow.define);
+})(unsafeWindow.require, unsafeWindow.define, unsafeWindow.Promise);
