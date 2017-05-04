@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.1.4
-// @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan]
+// @version      0.1.5
+// @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     04/28/2017
+// @modified     05/04/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -75,23 +75,37 @@
         var PAGE_CONFIG = {
             pan: {
                 prefix: 'file-widget-1:',
-                containers: ['.module-toolbar .list-tools>.g-button:has(.icon-download)', '.module-list-view .list-view .undefined>.g-button:has(.icon-download)'],
+                containers: ['.QDDOQB .g-button:has(.icon-download)'],
                 style: function() {
-                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}.module-list .module-list-view .operate .ex-yunpan-dropdown-button{display:none;}');
+                    GM_addStyle('.DxdbeCb .QDDOQB .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}');
                 }
             },
             share: {
                 prefix: 'file-widget-1:',
-                containers: ['.list-header .list-header-operatearea .list-header-operate .button-box>.g-button:has(.icon-download)', '.module-share-top-bar .button-box>.g-button:has(.icon-download)'],
+                containers: [
+                  '.KKtwaH .button-box>.g-button:has(.icon-download)',
+                  '.module-share-top-bar .button-box>.g-button:has(.icon-download)'
+                ],
                 style: function() {
-                    GM_addStyle('.module-toolbar .list-tools .g-dropdown-button:not(.tools-more) .g-button{border-radius: 0;}.module-list .list-view-header{z-index: 2;}.module-list .module-list-view .operate .ex-yunpan-dropdown-button .icon:before{display: none;}.module-share-header .slide-show-right{width: auto;}.ex-yunpan-dropdown-button.g-dropdown-button.button-open .menu{z-index:41;}.module-share-header .slide-show-header h2{width:230px;}');
+                    var styleList = [
+                        '.KPDwCE .QxJxtg{z-index: 2;}',
+                        '.module-share-header .slide-show-right{width: auto;}',
+                        '.ex-yunpan-dropdown-button.g-dropdown-button.button-open .menu{z-index:41;}',
+                        '.module-share-header .slide-show-header h2{width:230px;}',
+                        '.KPDwCE .xGLMIab .g-dropdown-button.ex-yunpan-dropdown-button{margin: 0 5px;}'
+                    ];
+                    GM_addStyle(styleList.join(''));
                 }
             },
             enterprise: {
                 prefix: 'business-function:',
                 containers: ['.button-box-container>.g-button:has(:contains("下载"))'],
                 style: function() {
-                    GM_addStyle('.ex-yunpan-dropdown-button .icon-download{background-image: url(/box-static/business-function/infos/icons_z.png?t=1476004014313);}.ex-yunpan-dropdown-button .g-button:hover .icon-download{background-position: 0px -34px;}');
+                    var styleList = [
+                        '.ex-yunpan-dropdown-button .icon-download{background-image: url(/box-static/business-function/infos/icons_z.png?t=1476004014313);}',
+                        '.ex-yunpan-dropdown-button .g-button:hover .icon-download{background-position: 0px -34px;}'
+                    ];
+                    GM_addStyle(styleList.join(''));
                 }
             }
         };
