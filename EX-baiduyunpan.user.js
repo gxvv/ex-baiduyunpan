@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.1.5
+// @version      0.1.6
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
 // @license      MIT
@@ -75,7 +75,7 @@
         var PAGE_CONFIG = {
             pan: {
                 prefix: 'file-widget-1:',
-                containers: ['.QDDOQB .g-button:has(.icon-download)'],
+                containers: ['.g-button:has(.icon-download):visible'],
                 style: function() {
                     GM_addStyle('.DxdbeCb .QDDOQB .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}');
                 }
