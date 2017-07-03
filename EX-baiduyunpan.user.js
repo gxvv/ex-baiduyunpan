@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.1.6
+// @version      0.1.7
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     05/04/2017
+// @modified     07/03/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -77,7 +77,6 @@
                 prefix: 'file-widget-1:',
                 containers: ['.g-button:has(.icon-download):visible'],
                 style: function() {
-                    GM_addStyle('.DxdbeCb .QDDOQB .g-dropdown-button.ex-yunpan-dropdown-button .g-button{border-radius: 0;}');
                 }
             },
             share: {
@@ -185,11 +184,12 @@
                             }, cb);
                         };
                     }
+                    var timeout = foldersList.length === 1 ?3e4 :3e3;
                     var promises = foldersList.map(function(e) {
                         return new Promise(function(resolve, reject) {
                             var timer = setTimeout(function() {
                                 resolve($.extend({}, e));
-                            }, 3000);
+                            }, timeout);
                             requestMethod(e, function(result) {
                                 resolve($.extend({}, e.isdir === 1 ? e : {}, result));
                             });
@@ -242,7 +242,7 @@
                                 msg: '复制失败'
                             });
                         });
-                        var text = '<textarea id="bar" rows="' + (dlinks.length + 1) + '" style="width:100%;white-space: nowrap;">' + dlinks.join('\n') + '</textarea>';
+                        var text = '<textarea id="bar" rows="' + ((dlinks.length>20 ?20 :dlinks.length) + 1) + '" style="width:100%;white-space: nowrap;">' + dlinks.join('\n') + '</textarea>';
                         var dialog = ctx.ui.confirm({
                             title: '复制链接',
                             body: text,
@@ -346,6 +346,7 @@
                 });
             }
         }).catch(function(msg) {
+            if(document.querySelector('#share_nofound_des') !== null) return;
             showError(msg + '加载失败');
         });
     });
