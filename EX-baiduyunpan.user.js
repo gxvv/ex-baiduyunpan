@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.2.0
+// @version      0.2.1
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     12/03/2018
+// @modified     22/03/2017
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -44,13 +44,13 @@
             };
         }
         var $dialog = $('<div id="errorDialog">' +
-            '<h3>EX-baiduyunpan:程序异常</h3>' +
-            '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>' +
-            '<p>Exception: ' + msg + '</p>' +
-            '<p>Script Ver: ' + GM_info.script.version + '</p>' +
-            '<p>TemperMonkey Ver: ' + GM_info.version + '</p>' +
-            '<p>UA: ' + navigator.userAgent + '</p>' +
-            '</div><hr><a class="close" href="javascript:;">关闭</a></div>');
+                        '<h3>EX-baiduyunpan:程序异常</h3>' +
+                        '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>' +
+                        '<p>Exception: ' + msg + '</p>' +
+                        '<p>Script Ver: ' + GM_info.script.version + '</p>' +
+                        '<p>TemperMonkey Ver: ' + GM_info.version + '</p>' +
+                        '<p>UA: ' + navigator.userAgent + '</p>' +
+                        '</div><hr><a class="close" href="javascript:;">关闭</a></div>');
         $dialog.on('click', '.close', function(event) {
             $dialog.remove();
         }).appendTo(document.body);
@@ -70,16 +70,16 @@
         };
         var PAGE_CONFIG = {
             pan: {
-                prefix: 'file-widget-1:',
+                prefix: 'function-widget-1:',
                 containers: ['.g-button:has(.icon-download):visible'],
                 style: function() {
                 }
             },
             share: {
-                prefix: 'file-widget-1:',
+                prefix: 'function-widget-1:',
                 containers: [
-                  '.KKtwaH .button-box>.g-button:has(.icon-download)',
-                  '.module-share-top-bar .button-box>.g-button:has(.icon-download)'
+                    '.KKtwaH .x-button-box>.g-button:has(.icon-download)',
+                    '.module-share-top-bar .x-button-box>.g-button:has(.icon-download)'
                 ],
                 style: function() {
                     var styleList = [
@@ -200,7 +200,7 @@
                     dServ.getDlinkPan(dServ.getFsidListData(e), allZip ? 'batch' : e.isdir === 1 ? 'batch' : 'nolimit', cb, undefined, undefined, 'POST');
                 };
             } else if (currentProduct === 'share') {
-                var yunData = require('disk-share:widget/system/data/yunData.js').get();
+                var yunData = require('disk-share:widget/data/yunData.js').get();
                 requestMethod = function(e, cb) {
                     dServ.getDlinkShare({
                         share_id: yunData.shareid,
@@ -300,6 +300,11 @@
         var $ = require('base:widget/libs/jquerypacket.js');
         var pageInfo = require('ex-yunpan:pageInfo');
         var prefix = pageInfo.prefix;
+        require.async(prefix + 'download/util/context.js', function(e) {
+            e.getContext = function() {
+                return ctx;
+            };
+        });
         var dmPromise = new Promise(function(resolve, reject) {
             $(unsafeWindow).on('load', function() {
                 reject('downloadManager.js');
