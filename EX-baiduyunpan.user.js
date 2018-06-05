@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.2.1
+// @version      0.2.2
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [百度云盘企业版] [企业版] [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
 // @license      MIT
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     22/03/2017
+// @modified     05/06/2018
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -45,7 +45,7 @@
         }
         var $dialog = $('<div id="errorDialog">' +
                         '<h3>EX-baiduyunpan:程序异常</h3>' +
-                        '<div class="dialog-body"><p>请尝试更新脚本或复制以下信息<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a></p>' +
+                        '<div class="dialog-body"><p>请尝试<a href="https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js" target="_blank">更新脚本</a>或复制以下信息<a href="https://github.com/gxvv/ex-baiduyunpan/issues" target="_blank">提交issue</a>(请不要提交重复的issue)</p>' +
                         '<p>Exception: ' + msg + '</p>' +
                         '<p>Script Ver: ' + GM_info.script.version + '</p>' +
                         '<p>TemperMonkey Ver: ' + GM_info.version + '</p>' +
@@ -122,14 +122,14 @@
             dServ = dlinkService;
         });
 
-        var menu = [{
+        var menu = [/* {
             title: '普通下载',
             'click': function() {
                 var start = require(prefix + 'download/start.js');
                 start.start(ctx);
             },
             availableProduct: ['pan', 'share', 'enterprise']
-        }, {
+        }, */{
             title: '复制链接',
             'click': function() {
                 var fetchDownLinks = require('ex-yunpan:fetchDownLinks.js');
@@ -309,10 +309,11 @@
             $(unsafeWindow).on('load', function() {
                 reject('downloadManager.js');
             });
-            require.async(prefix + 'download/service/downloadManager.js', function(dm) {
+            resolve();
+            /* require.async(prefix + 'download/service/downloadManager.js', function(dm) {
                 dm.MODE_PRE_INSTALL = dm.MODE_PRE_DOWNLOAD;
                 resolve();
-            });
+            }); */
         });
         var gjcPromise = new Promise(function(resolve, reject) {
             $(unsafeWindow).on('load', function() {
@@ -331,7 +332,8 @@
             $(unsafeWindow).on('load', function() {
                 reject('downloadDirectService.js');
             });
-            require.async(prefix + 'download/service/downloadDirectService.js', function(dDS) {
+            resolve();
+            /* require.async(prefix + 'download/service/downloadDirectService.js', function(dDS) {
                 var $preDlFrame = null;
                 var _ = dDS.straightforwardDownload;
                 if (typeof _ !== 'function') return;
@@ -348,7 +350,7 @@
                     _.apply(dDS, arguments);
                 };
                 resolve();
-            });
+            }); */
         });
         Promise.all([dmPromise, gjcPromise, ddsPromise]).then(function() {
             try {
