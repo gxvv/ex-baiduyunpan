@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.3.0
+// @version      0.3.1
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [企业版]
 // @description  [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
@@ -242,7 +242,7 @@ var inline_src = (<><![CDATA[
         });
 
         define('ex-yunpan:fetchDownLinks', () => {
-            let ctx = require('system-core:context/context.js').instanceForSystem;
+            let {instanceForSystem: ctx} = require('system-core:context/context.js');
             let {prefix} = require('ex-yunpan:pageInfo');
             let dServ = null;
 
@@ -349,7 +349,7 @@ var inline_src = (<><![CDATA[
             return fetchDownLinks;
         });
         define('ex-yunpan:clipboardDialog', () => {
-            let ctx = require('system-core:context/context.js').instanceForSystem;
+            let {instanceForSystem: ctx} = require('system-core:context/context.js');
             let show = list => {
                 let clipboard;
                 let maxrow = list.length > 10 ? 11 : list.length + 1;
