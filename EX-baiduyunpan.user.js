@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.3.1
+// @version      0.3.2
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [企业版]
 // @description  [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
@@ -9,7 +9,7 @@
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     19/06/2018
+// @modified     20/06/2018
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -78,7 +78,7 @@ var inline_src = (<><![CDATA[
                 share: {
                     prefix: 'function-widget-1:',
                     containers: [
-                        'div:not(.file-name)>div>.x-button-box>.g-button[title="\u4e0b\u8f7d"]',
+                        'div:not(.file-name)>div>.x-button-box>.g-button[title^="\u4e0b\u8f7d"]',
                         '.module-share-top-bar .x-button-box>.g-button[title="\u4e0b\u8f7d"]'
                     ],
                     style: () => {
@@ -398,5 +398,3 @@ var inline_src = (<><![CDATA[
 var c = Babel.transform(inline_src, { presets: ["es2015", "es2016"] });
 eval(c.code);
 /* jshint ignore:end */
-
-
