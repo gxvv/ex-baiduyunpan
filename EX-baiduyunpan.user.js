@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EX-百度云盘
 // @namespace    https://github.com/gxvv/ex-baiduyunpan/
-// @version      0.3.2
+// @version      0.3.3
 // @description  [下载大文件] [批量下载] [文件夹下载] [百度网盘] [百度云盘] [企业版]
 // @description  [baidu] [baiduyun] [yunpan] [baiduyunpan] [eyun]
 // @author       gxvv
@@ -9,7 +9,7 @@
 // @supportURL   https://github.com/gxvv/ex-baiduyunpan/issues
 // @updateURL    https://gxvv.github.io/ex-baiduyunpan/EX-baiduyunpan.user.js
 // @date         01/01/2017
-// @modified     20/06/2018
+// @modified     20/08/2018
 // @match        *://pan.baidu.com/disk/home*
 // @match        *://yun.baidu.com/disk/home*
 // @match        *://pan.baidu.com/s/*
@@ -17,7 +17,7 @@
 // @match        *://pan.baidu.com/share/link?*
 // @match        *://yun.baidu.com/share/link?*
 // @match        *://eyun.baidu.com/s/*
-// @match        *://eyun.baidu.com/enterprise/*
+// @match        *://eyun.baidu.com/enterprise/share/link?*
 // @run-at       document-end
 // @grant        unsafeWindow
 // @grant        GM_addStyle
@@ -39,6 +39,7 @@ var inline_src = (<><![CDATA[
                          #errorDialog .very-very-important {font-size: 20px;font-weight: bold;}
                          `);
             let div = document.createElement('div');
+
             div.innerHTML = `<div id="errorDialog">
                                 <h3>EX-baiduyunpan:程序异常</h3>
                                 <div class="dialog-body">
@@ -72,11 +73,13 @@ var inline_src = (<><![CDATA[
             const PAGE_CONFIG = {
                 pan: {
                     prefix: 'function-widget-1:',
+                    product: 'pan',
                     containers: ['.g-button[title="\u79bb\u7ebf\u4e0b\u8f7d"]'],
                     style: () => {}
                 },
                 share: {
                     prefix: 'function-widget-1:',
+                    product: 'share',
                     containers: [
                         'div:not(.file-name)>div>.x-button-box>.g-button[title^="\u4e0b\u8f7d"]',
                         '.module-share-top-bar .x-button-box>.g-button[title="\u4e0b\u8f7d"]'
@@ -93,6 +96,7 @@ var inline_src = (<><![CDATA[
                 },
                 enterprise: {
                     prefix: 'business-function:',
+                    product: 'enterprise',
                     containers: ['div:not(.operate)>.button-box-container>.g-button[title="\u4e0b\u8f7d"]'],
                     style: () => {
                         let style= `.ex-yunpan-dropdown-button .icon-download{background-image: url(/box-static/business-function/infos/icons_z.png);}
@@ -112,8 +116,17 @@ var inline_src = (<><![CDATA[
             }
             return PAGE_CONFIG[currentPage];
         });
+
+        define('ex-yunpan:ctx', require => {
+            let {product} = require('ex-yunpan:pageInfo');
+            let prefix = product === 'enterprise' ? 'business-core:' : 'system-core:';
+            let {instanceForSystem: ctx} = require(`${prefix}context/context.js`);
+
+            return ctx;
+        });
+
         define('ex-yunpan:pluginInit', async require => {
-            let {instanceForSystem: ctx} = require('system-core:context/context.js');
+            let ctx = require('ex-yunpan:ctx');
             let {prefix} = require('ex-yunpan:pageInfo');
             let {pageInfo: {currentProduct = 'pan'} = {currentProduct: 'pan'}} = ctx;
             let currPrdIsEyun = currentProduct === 'enterprise';
@@ -180,9 +193,8 @@ var inline_src = (<><![CDATA[
         });
 
         define('ex-yunpan:downloadBtnInit', async require => {
-            let {instanceForSystem: ctx} = require('system-core:context/context.js');
+            let ctx = require('ex-yunpan:ctx');
             let {pageInfo: {currentProduct = ''} = {currentProduct: ''}} = ctx;
-            let $ = require('base:widget/libs/jquerypacket.js');
             let pageInfo = require('ex-yunpan:pageInfo');
             let {prefix} = pageInfo;
             let fetchDownLinks = require('ex-yunpan:fetchDownLinks');
@@ -231,18 +243,19 @@ var inline_src = (<><![CDATA[
                 icon: 'icon-download'
             };
             let selectors = pageInfo.containers.join();
+            let elements = [].slice.call(document.querySelectorAll(selectors) || [], 0);
 
-            $(selectors).each((index, element) => {
+            elements.forEach(element => {
                 let exDlBtn = ctx.ui.button(exDlBtnConfig);
 
-                $(element).after(exDlBtn.dom.addClass('ex-yunpan-dropdown-button'));
+                exDlBtn.dom.addClass('ex-yunpan-dropdown-button').insertAfter(element);
                 exDlBtn.resizeButtonWidth();
             });
             pageInfo.style();
         });
 
         define('ex-yunpan:fetchDownLinks', () => {
-            let {instanceForSystem: ctx} = require('system-core:context/context.js');
+            let ctx = require('ex-yunpan:ctx');
             let {prefix} = require('ex-yunpan:pageInfo');
             let dServ = null;
 
@@ -349,7 +362,7 @@ var inline_src = (<><![CDATA[
             return fetchDownLinks;
         });
         define('ex-yunpan:clipboardDialog', () => {
-            let {instanceForSystem: ctx} = require('system-core:context/context.js');
+            let ctx = require('ex-yunpan:ctx');
             let show = list => {
                 let clipboard;
                 let maxrow = list.length > 10 ? 11 : list.length + 1;
